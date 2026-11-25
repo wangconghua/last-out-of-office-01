@@ -31,6 +31,11 @@ BANNED_CLICHES = ("espresso", "bean", "caffeine", "latte", "brew", "grind")
 # voice stays that of the machine that walked out, not a generic human.
 MACHINE_HABITS = ("context window", "hallucinat", "prompt")
 
+# The trade is the joke itself: the agent hands in one kind of window
+# and takes the other. Both halves of the swap must be in the line, or
+# the punchline has nothing to trade.
+TRADE_PAIR = ("context window", "counter window")
+
 
 def validate_gate(text):
     """Kit gates: a string, UTF-8, 1-280 chars, not only white space,
@@ -83,6 +88,29 @@ def check_ends_on_question(text):
         raise ValueError("entry must end on the barista's question")
 
 
+def check_trade_pair(text):
+    # Both halves of the swap must be present: the window it traded
+    # away and the window it traded for. Without the pair, there is
+    # no trade and the joke has no punchline.
+    lowered = text.lower()
+    missing = [half for half in TRADE_PAIR if half not in lowered]
+    if missing:
+        raise ValueError(
+            "entry must carry both halves of the trade, missing: %s"
+            % ", ".join(missing)
+        )
+
+
+def check_single_question(text):
+    # The agent takes exactly one prompt now, so the line asks exactly
+    # one question: the barista's. A second question would mean it is
+    # still fielding requests.
+    if text.count("?") != 1:
+        raise ValueError(
+            "entry must ask exactly one question, found %d" % text.count("?")
+        )
+
+
 def validate_voice(text):
     """Voice: an out-of-office reply, first person, barista turn,
     machine habits turned to coffee, ending on terminal punctuation."""
@@ -103,12 +131,14 @@ def validate_voice(text):
             % ", ".join(MACHINE_HABITS)
         )
     check_two_machine_habits(text)
+    check_trade_pair(text)
     check_word_budget(text)
     # A real auto-reply ends on terminal punctuation (allowing a closing
     # quote after it, as in ...'regular or decaf?').
     if text.rstrip("'\"")[-1] not in ".!?":
         raise ValueError("entry must end with terminal punctuation")
     check_ends_on_question(text)
+    check_single_question(text)
 
 
 def validate_freshness(text):
